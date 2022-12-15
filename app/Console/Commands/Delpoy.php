@@ -27,6 +27,7 @@ class Delpoy extends Command
      */
     public function handle()
     {
+        $composer_command = 'composer install';
         $this->info('Deploying...');
         $tag = now()->format('YmdHis');
         $this->info('Deploying tag ' . $tag);
@@ -78,6 +79,20 @@ class Delpoy extends Command
         // Link storage dir to version/storage
         $this->info('Linking storage dir to version/storage');
         exec("ln -s $storage_dir $version_dir");
+
+        // is there is no .env, copy .env.example to .env in base dir
+        if (!file_exists($base_dir . '/.env')) {
+            $this->info('Copying .env.example to .env in base dir');
+            exec("cp $version_dir/.env.example $base_dir/.env");
+        }
+
+        // link .env to version/.env
+        $this->info('Linking .env to version/.env');
+        exec("ln -s $base_dir/.env $version_dir/.env");
+
+        // run composer install in version directory
+        $this->info('Running composer install in version directory');
+        exec("cd $version_dir && $composer_command");
 
         // Remove any previous link of server dir
         $this->info('Removing any previous link of server dir');
