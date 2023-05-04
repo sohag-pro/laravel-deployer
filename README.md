@@ -4,6 +4,13 @@
 Laravel Deployer
 </h1>
 
+<p align="center"><a href="https://notes.sohag.pro/laravel-deployer-the-ultimate-deployment-tool-for-your-laravel-application" target="_blank"><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1683198012948/779395a1-89e6-44be-9a95-3d32322a8504.jpeg?auto=compress,format&format=webp" width="400" alt="Laravel Logo">
+</a></p>
+<p align="center"><a href="https://notes.sohag.pro/laravel-deployer-the-ultimate-deployment-tool-for-your-laravel-application" target="_blank">
+<h2 align="center">Documentation</h2>
+</a></p>
+
+
 ## Note to Contributors: We're actively seeking your contributions!
 
 Thank you for your interest in our project. We welcome contributions from anyone and everyone! Whether you're a developer, designer, or just someone who wants to help out, there are many ways you can contribute.
