@@ -4,6 +4,21 @@
 Laravel Deployer
 </h1>
 
+## Note to Contributors: We're actively seeking your contributions!
+
+Thank you for your interest in our project. We welcome contributions from anyone and everyone! Whether you're a developer, designer, or just someone who wants to help out, there are many ways you can contribute.
+
+We're currently seeking contributions in the following areas:
+- Feature requests
+- Bug reports
+- Code contributions
+- Documentation improvements
+
+If you're interested in contributing, please feel free to open an issue.
+
+We value all contributions and appreciate your help in making our project better. Thank you!
+
+
 ## About Laravel Deployer
 It's a no downtime deployer for laravel. You just need to set it up on your server, you will get a UI to deploy your laravel application.
 
