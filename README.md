@@ -4,7 +4,7 @@
 Laravel Deployer
 </h1>
 
-<p align="center"><a href="https://notes.sohag.pro/laravel-deployer-the-ultimate-deployment-tool-for-your-laravel-application" target="_blank"><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1683198012948/779395a1-89e6-44be-9a95-3d32322a8504.jpeg?auto=compress,format&format=webp" width="400" alt="Laravel Logo">
+<p align="center"><a href="https://notes.sohag.pro/laravel-deployer-the-ultimate-deployment-tool-for-your-laravel-application" target="_blank"><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1683198012948/779395a1-89e6-44be-9a95-3d32322a8504.jpeg?auto=compress,format&format=webp" width="900" alt="Laravel Logo">
 </a></p>
 <p align="center"><a href="https://notes.sohag.pro/laravel-deployer-the-ultimate-deployment-tool-for-your-laravel-application" target="_blank">
 <h2 align="center">Documentation</h2>
