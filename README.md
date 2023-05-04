@@ -31,9 +31,43 @@ cp .env.example .env
 php artisan key:generate
 ```
 
+- put the env variable in .env file
+```bash
+GIT_REMOTE_URL=https://github.com/sohag-pro/laravel-deployer.git
+# full path from root from where the project will be server
+# with a trailing slash
+SERVE_DIR=/Users/sohag/Projects/deployer-test/www/
+
+# full path from root from where the project will be cloned and all other operations will be done
+# Should be different from SERVE_DIR and should be created manually before running the script
+# with a trailing slash
+BASE_DIR=/Users/sohag/Projects/deployer-test/
+
+# where the backups will be stored
+VERSION_DIR=backups
+
+# where the storage will be linked
+STORAGE_DIR=storage
+
+# Where the dump SQL will be stored
+DB_DIR=database
+
+# which db to dump
+DEPLOYER_DB_NAME=
+
+# user to dump db
+DEPLOYER_DB_USER=
+
+# password to dump db
+DEPLOYER_DB_PASSWORD=
+```
+
 - Run the local development server
 ```bash
 php artisan serve
 ```
 
+- Visit http://localhost:8000 in your browser
 
+## License
+The Laravel Deployer is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
