@@ -2,7 +2,7 @@
 
 return [
     'one_time_commands' => 'php artisan key:generate',
-    'commands'          => 'composer2 install',
+    'commands'          => 'composer install',
     'git_remote_url'    => env( 'GIT_REMOTE_URL' ),
     'serve_dir'         => env( 'SERVE_DIR', '/var/www/html/deployer-demo/public_html' ),
     'base_dir'          => env( 'BASE_DIR', '/var/www/html/deployer-demo' ),

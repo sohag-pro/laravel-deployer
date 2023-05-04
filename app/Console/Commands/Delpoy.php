@@ -26,7 +26,7 @@ class Delpoy extends Command {
      */
     public function handle() {
         $this->info( 'Deploying...' );
-        $tag = now()->format( 'YmdHis' );
+        $tag = now()->format( 'Y-m-d__H_i_s' );
         $this->info( 'Deploying tag ' . $tag );
         $run_one_time_commands = false;
         $one_time_commands     = config( 'deployer.one_time_commands' );
@@ -124,11 +124,11 @@ class Delpoy extends Command {
 
         // Remove any previous link of server dir
         $this->info( 'Removing any previous link of server dir' );
-        exec( "rm -rf $serve_dir" );
+        exec( "rm -rf $serve_dir/*" );
 
         // Link version dir to serve dir
         $this->info( 'Linking version dir to serve dir' );
-        exec( "ln -s $version_dir $serve_dir" );
+        exec( "ln -s $version_dir/* $serve_dir" );
 
         // run one time commands
         if ( $run_one_time_commands ) {

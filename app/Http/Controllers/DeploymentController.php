@@ -18,7 +18,8 @@ class DeploymentController extends Controller {
         // check if exisit serve directory
         if ( file_exists( $serve_dir ) ) {
             // get the link directory with serve directory
-            $live = basename( readlink( $serve_dir ) );
+            $live = @explode( '/', readlink( "$serve_dir/app" ) );
+            $live = $live[count( $live ) - 2] ?? null;
         }
 
         // Check if base dir exists
@@ -111,10 +112,10 @@ class DeploymentController extends Controller {
         }
 
         // Remove any previous link of server dir
-        exec( "rm -rf $serve_dir" );
+        exec( "rm -rf $serve_dir/*" );
 
         // Link version dir to serve dir
-        exec( "ln -s $version_dir $serve_dir" );
+        exec( "ln -s $version_dir/* $serve_dir" );
 
         return redirect()->back()->with( 'success', 'Restored successfully' );
     }
@@ -173,12 +174,12 @@ class DeploymentController extends Controller {
         $zip_file    = $version_dir . '/' . $folder . '.zip';
 
         // Create zip file
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive ();
         $zip->open( $zip_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE );
 
         // Create recursive directory iterator
-        $files = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator( $version_dir . '/' . $folder ),
+        $files = new \RecursiveIteratorIterator (
+            new \RecursiveDirectoryIterator ( $version_dir . '/' . $folder ),
             \RecursiveIteratorIterator::LEAVES_ONLY
         );
 
