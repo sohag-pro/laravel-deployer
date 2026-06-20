@@ -12,8 +12,8 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/PHP-%5E8.1-777bb4.svg" alt="PHP ^8.1">
-  <img src="https://img.shields.io/badge/Laravel-%5E10-ff2d20.svg" alt="Laravel ^10">
+  <img src="https://img.shields.io/badge/PHP-%5E8.3-777bb4.svg" alt="PHP ^8.3">
+  <img src="https://img.shields.io/badge/Laravel-%5E13-ff2d20.svg" alt="Laravel ^13">
 </p>
 
 ---
@@ -66,7 +66,7 @@ A single deploy run (`php artisan deploy`):
 
 ## Requirements
 
-- PHP **8.1+** with the `zip` extension
+- PHP **8.3+** with the `zip` extension
 - Composer
 - Git (available on `PATH`)
 - A database for the deployer itself (SQLite is fine; MySQL/MariaDB also supported)
