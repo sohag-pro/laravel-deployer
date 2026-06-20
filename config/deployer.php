@@ -37,4 +37,8 @@ return [
     'health_url' => env('DEPLOYER_HEALTH_URL'),
     'health_retries' => (int) env('DEPLOYER_HEALTH_RETRIES', 5),
     'health_delay' => (int) env('DEPLOYER_HEALTH_DELAY', 3),
+
+    // Redirect insecure requests to HTTPS and emit HSTS. Strongly recommended
+    // in production; ignored on the local environment.
+    'force_https' => (bool) env('DEPLOYER_FORCE_HTTPS', false),
 ];
