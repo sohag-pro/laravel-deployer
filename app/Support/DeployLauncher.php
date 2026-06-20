@@ -13,16 +13,21 @@ use Symfony\Component\Process\Process;
  */
 class DeployLauncher
 {
-    public function launch(): void
+    public function launch(?string $ref = null): void
     {
         $php = (string) config('deployer.php_binary', 'php');
         $artisan = base_path('artisan');
         $log = DeployState::logPath();
 
+        $refArg = ($ref !== null && $ref !== '')
+            ? ' --ref='.escapeshellarg($ref)
+            : '';
+
         $command = sprintf(
-            'nohup %s %s deploy >> %s 2>&1 &',
+            'nohup %s %s deploy%s >> %s 2>&1 &',
             escapeshellarg($php),
             escapeshellarg($artisan),
+            $refArg,
             escapeshellarg($log),
         );
 

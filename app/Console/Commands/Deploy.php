@@ -19,7 +19,7 @@ class Deploy extends Command
      *
      * @var string
      */
-    protected $signature = 'deploy';
+    protected $signature = 'deploy {--ref= : Branch, tag or commit to deploy (defaults to the repository default branch)}';
 
     /**
      * The console command description.
@@ -62,8 +62,23 @@ class Deploy extends Command
                 $this->ensureDirectory($dir);
             }
 
+            // Resolve the git ref to deploy (defaults to the remote's HEAD).
+            $ref = trim((string) $this->option('ref'));
+            if ($ref !== '' && ! self::isValidRef($ref)) {
+                $this->error("Invalid git ref: {$ref}");
+                DeployState::markFinished($id, false, "Invalid git ref: {$ref}");
+
+                return self::FAILURE;
+            }
+
             // Clone the repository into the new release directory.
             $this->exec(sprintf('git clone %s %s', escapeshellarg($git_remote_url), escapeshellarg($version_dir)));
+
+            // Check out the requested ref (branch, tag or commit).
+            if ($ref !== '') {
+                $this->info("Deploying ref: {$ref}");
+                $this->exec(sprintf('git -C %s checkout --quiet %s', escapeshellarg($version_dir), escapeshellarg($ref)));
+            }
 
             // Seed the shared storage directory on the very first deploy only.
             if (count(scandir($storage_dir)) === 2) {
@@ -172,6 +187,19 @@ class Deploy extends Command
         if (! file_exists($path)) {
             mkdir($path, 0755, true);
         }
+    }
+
+    /**
+     * Allow only safe git ref characters (branch/tag/commit), no shell
+     * metacharacters, spaces, leading dashes or '..'.
+     */
+    public static function isValidRef(string $ref): bool
+    {
+        return $ref !== ''
+            && strlen($ref) <= 255
+            && ! str_starts_with($ref, '-')
+            && ! str_contains($ref, '..')
+            && (bool) preg_match('#^[A-Za-z0-9._/-]+$#', $ref);
     }
 
     /**
