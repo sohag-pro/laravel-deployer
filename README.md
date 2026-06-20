@@ -177,7 +177,8 @@ This tool can run arbitrary deploy commands, overwrite your web root, and restor
 - **Destructive actions are POST + CSRF only** (deploy, restore, DB restore). Read-only downloads are GET.
 - **No shell injection.** All user-supplied names are validated against `^[A-Za-z0-9._-]+$` (no traversal, no metacharacters) and every shell argument is escaped via `escapeshellarg`.
 - **DB credentials never hit the process list** — `mysqldump`/`mysql` receive them through a temporary `0600` option file, not `-p<password>`.
-- **Run it behind HTTPS** and, ideally, restrict access by IP / VPN / basic-auth at the web-server layer.
+- **Run it behind HTTPS** and, ideally, restrict access by IP / VPN / basic-auth at the web-server layer. Set `DEPLOYER_FORCE_HTTPS=true` to redirect insecure requests and emit HSTS.
+- **Security headers** (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`) are sent on every response.
 - Set `APP_DEBUG=false` and `APP_ENV=production` in production.
 - The OS user running the deployer needs write access to `BASE_DIR` and `SERVE_DIR`; scope it tightly.
 
