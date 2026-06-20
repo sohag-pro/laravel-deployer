@@ -1,14 +1,37 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="min-h-screen ">
+    <div class="min-h-screen">
+        <div class="flex items-center justify-between px-12 pt-8">
+            <h1 class="text-2xl font-semibold text-gray-800">Laravel Deployer</h1>
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-800">
+                    Log out
+                </button>
+            </form>
+        </div>
+
+        @if (session('success'))
+            <div class="mx-12 mt-6 rounded-md bg-green-100 px-4 py-3 text-green-800">{{ session('success') }}</div>
+        @endif
+        @if (session('error'))
+            <div class="mx-12 mt-6 rounded-md bg-red-100 px-4 py-3 text-red-800">{{ session('error') }}</div>
+        @endif
+
         <div class="max-w-8xl mx-auto flex flex-col justify-center space-y-5 p-12 lg:flex-row lg:space-x-5 lg:space-y-0">
             <!-- Card 1 -->
             <div
                 class="flex h-full w-full flex-col items-center justify-between space-y-5 rounded-md border border-gray-100 bg-gray-200 bg-opacity-40 bg-clip-padding py-8 px-5 backdrop-blur-sm backdrop-filter">
                 <h2 class="pb-8 text-2xl font-medium text-gray-800">Deployment</h2>
 
-                <a class="rounded-md bg-green-500 text-2xl px-6 py-3 font-semibold text-white" href="{{ route('deploy') }}">Deploy</a>
+                <form method="POST" action="{{ route('deploy') }}"
+                    onsubmit="return confirm('Deploy the latest commit now?');">
+                    @csrf
+                    <button type="submit" class="rounded-md bg-green-500 px-6 py-3 text-2xl font-semibold text-white">
+                        Deploy
+                    </button>
+                </form>
             </div>
 
             <!-- Card 2 -->
@@ -39,9 +62,13 @@
                                     </a>
                                 </td>
                                 <td class="text-center text-purple-500 px-4 py-2">
-                                    <a class="rounded-md no-underline bg-gradient-to-r from-blue-500 to-green-400 hover:from-yellow-500 hover:to-pink-500 p-1 text-white" href="{{ route('restore', ['folder' => $folder['name']]) }}">
-                                        Restore
-                                    </a>
+                                    <form method="POST" action="{{ route('restore', ['folder' => $folder['name']]) }}"
+                                        onsubmit="return confirm('Restore this version as live?');">
+                                        @csrf
+                                        <button type="submit" class="rounded-md bg-gradient-to-r from-blue-500 to-green-400 p-1 text-white hover:from-yellow-500 hover:to-pink-500">
+                                            Restore
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         @endforeach
@@ -74,9 +101,13 @@
                                     </a>
                                 </td>
                                 <td class="text-center text-purple-500 px-4 py-2">
-                                    <a class="rounded-md no-underline bg-gradient-to-r from-green-400 to-blue-500 hover:from-pink-500 hover:to-yellow-500 p-1 text-white" href="{{ route('restoreDb', ['db_file' => $db_file['name']]) }}">
-                                        Restore
-                                    </a>
+                                    <form method="POST" action="{{ route('restoreDb', ['db_file' => $db_file['name']]) }}"
+                                        onsubmit="return confirm('Restore this database dump? Current data will be overwritten.');">
+                                        @csrf
+                                        <button type="submit" class="rounded-md bg-gradient-to-r from-green-400 to-blue-500 p-1 text-white hover:from-pink-500 hover:to-yellow-500">
+                                            Restore
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         @endforeach
