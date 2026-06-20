@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Support\Database;
 use App\Support\Releases;
+use App\Support\Retention;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
@@ -108,6 +109,14 @@ class Deploy extends Command
             // First-deploy-only commands (e.g. key:generate).
             if ($run_one_time_commands && ! empty($one_time_commands)) {
                 $this->exec(sprintf('cd %s && %s', escapeshellarg($version_dir), $one_time_commands));
+            }
+
+            // Prune old releases and dumps, never touching the live release.
+            $releasesRoot = $base_dir.config('deployer.version_dir');
+            $prunedReleases = Retention::pruneReleases($releasesRoot, (int) config('deployer.keep_releases'), $tag);
+            $prunedDumps = Retention::pruneDumps($db_dir, (int) config('deployer.keep_db_dumps'));
+            if ($prunedReleases || $prunedDumps) {
+                $this->info('Pruned '.count($prunedReleases).' release(s) and '.count($prunedDumps).' dump(s).');
             }
 
             $this->info("Deployed release {$tag}.");

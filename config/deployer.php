@@ -15,4 +15,9 @@ return [
     'db_password' => env('DEPLOYER_DB_PASSWORD'),
     'db_host' => env('DEPLOYER_DB_HOST', 'localhost'),
     'db_port' => env('DEPLOYER_DB_PORT', '3306'),
+
+    // Retention: how many releases and DB dumps to keep. Older entries are
+    // pruned after a successful deploy. Set to 0 to keep everything.
+    'keep_releases' => (int) env('KEEP_RELEASES', 5),
+    'keep_db_dumps' => (int) env('KEEP_DB_DUMPS', 10),
 ];
