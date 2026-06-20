@@ -22,12 +22,14 @@
 
 Laravel Deployer is a small Laravel application you run **on your server**. It gives you a password-protected dashboard to:
 
-- **Deploy** the latest commit of your app with **zero downtime** (atomic symlink switch).
+- **Deploy** any branch, tag or commit with **zero downtime** (atomic symlink switch), in a background process with a live status badge and streamed log.
 - **Roll back** to any previous release with one click.
-- **Back up** your app's database automatically before every deploy, and **restore** or **download** any dump from the UI.
+- **Health-check** the new release after it goes live and **auto-roll-back** if it fails.
+- **Back up** your app's database (gzipped) automatically before every deploy, and **restore** or **download** any dump from the UI.
+- **Prune** old releases and dumps, and **notify** Slack / email on success or failure.
 - Keep **shared** `storage/` and `.env` across releases, the way Laravel expects.
 
-It is intentionally minimal — no agents, no queues, no external services. Just Git, PHP, and symlinks.
+Authentication is mandatory, with login rate-limiting and optional TOTP two-factor. It is intentionally minimal — no agents, no queue workers, no external services. Just Git, PHP, and symlinks.
 
 > 📖 Original write-up: [Laravel Deployer — The Ultimate Deployment Tool](https://notes.sohag.pro/laravel-deployer-the-ultimate-deployment-tool-for-your-laravel-application)
 
@@ -59,7 +61,7 @@ A single deploy run (`php artisan deploy`):
 1. Clones `GIT_REMOTE_URL` into a new `VERSION_DIR/<timestamp>` release.
 2. On the first deploy, seeds shared `storage/` and creates the shared `.env` from `.env.example`.
 3. Replaces the release's `storage/` with a symlink to the shared one, and links the shared `.env` in.
-4. Dumps the configured database to `DB_DIR/<db>-<timestamp>.sql` (if DB creds are set).
+4. Dumps the configured database to `DB_DIR/<db>-<timestamp>.sql.gz` (if DB creds are set; gzip is on by default).
 5. Runs the build (`composer install && php artisan optimize:clear`) and your `AFTER_DEPLOY_COMMANDS`, plus an optional project `afterDeploy.sh`.
 6. Atomically re-points the `SERVE_DIR` symlink at the new release — this is the moment the new version goes live.
 
@@ -102,8 +104,8 @@ Set the deployment target and (optionally) the database to back up. See the [Con
 
 ```dotenv
 GIT_REMOTE_URL=git@github.com:you/your-app.git
-SERVE_DIR=/var/www/your-app/public_html/    # your web root, trailing slash
-BASE_DIR=/var/www/your-app/                  # working dir, different from SERVE_DIR
+SERVE_DIR=/var/www/your-app/current/    # live-release symlink; docroot = SERVE_DIR/public
+BASE_DIR=/var/www/your-app/             # working dir, different from SERVE_DIR
 ```
 
 ### 3. Create the admin login
@@ -146,7 +148,7 @@ All deployment settings live in `config/deployer.php` and are driven by `.env`.
 | Variable | Purpose | Example |
 | --- | --- | --- |
 | `GIT_REMOTE_URL` | Repository to deploy | `git@github.com:you/app.git` |
-| `SERVE_DIR` | Web root; live release is symlinked here (trailing slash) | `/var/www/app/public_html/` |
+| `SERVE_DIR` | Live-release symlink; set docroot to `SERVE_DIR/public` (trailing slash) | `/var/www/app/current/` |
 | `BASE_DIR` | Working dir for releases/storage/db/.env (trailing slash, **≠ `SERVE_DIR`**) | `/var/www/app/` |
 | `VERSION_DIR` | Releases subfolder under `BASE_DIR` | `backups` |
 | `STORAGE_DIR` | Shared storage subfolder under `BASE_DIR` | `storage` |
@@ -197,7 +199,10 @@ vendor/bin/phpunit       # run the suite
 vendor/bin/pint          # format / lint
 ```
 
-The suite covers authentication gating and rejection of malicious filenames.
+The suite covers authentication and 2FA, login rate-limiting, command-injection
+rejection, the atomic release switch, retention, database dump/restore,
+background deploys, health-check rollback, notifications, security headers, and
+an end-to-end deploy against a local git repository. CI runs it on PHP 8.3 and 8.4.
 
 ---
 
