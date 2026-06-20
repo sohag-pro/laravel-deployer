@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Support\Database;
+use App\Support\Releases;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
@@ -46,7 +47,9 @@ class Deploy extends Command
                 return self::FAILURE;
             }
 
-            foreach ([$base_dir, $version_dir, $serve_dir, $storage_dir, $db_dir] as $dir) {
+            // Note: $serve_dir is intentionally not pre-created — it is managed
+            // as a symlink by Releases::switch().
+            foreach ([$base_dir, $version_dir, $storage_dir, $db_dir] as $dir) {
                 $this->ensureDirectory($dir);
             }
 
@@ -99,9 +102,8 @@ class Deploy extends Command
                 $this->exec(sprintf('cd %s && sh afterDeploy.sh', escapeshellarg($version_dir)));
             }
 
-            // Atomically switch the live serve directory to the new release.
-            $this->exec(sprintf('rm -rf %s', escapeshellarg($serve_dir).'/*'));
-            $this->exec(sprintf('ln -s %s %s', escapeshellarg($version_dir).'/*', escapeshellarg($serve_dir)));
+            // Atomically switch the live serve symlink to the new release.
+            Releases::switch($serve_dir, $version_dir);
 
             // First-deploy-only commands (e.g. key:generate).
             if ($run_one_time_commands && ! empty($one_time_commands)) {

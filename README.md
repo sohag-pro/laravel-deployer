@@ -46,10 +46,13 @@ BASE_DIR/                         # working area (NOT web-served)
 ├── database/                     # DB_DIR — timestamped .sql dumps
 └── .env                          # shared .env, symlinked into each release
 
-SERVE_DIR/  ──(symlinks)──▶  BASE_DIR/backups/<newest-release>/*
+SERVE_DIR  ──(symlink)──▶  BASE_DIR/backups/<newest-release>
    ▲
-   └── your web server's document root (e.g. nginx/apache points here)
+   └── SERVE_DIR is itself a symlink to the live release.
+       Point your web server's document root at SERVE_DIR/public.
 ```
+
+`SERVE_DIR` is a **single symlink** that points at the active release. Switching releases renames that symlink in one atomic operation (`rename(2)`), so a request never sees a missing or half-built release — that is what makes deploys and rollbacks zero-downtime.
 
 A single deploy run (`php artisan deploy`):
 
@@ -58,9 +61,13 @@ A single deploy run (`php artisan deploy`):
 3. Replaces the release's `storage/` with a symlink to the shared one, and links the shared `.env` in.
 4. Dumps the configured database to `DB_DIR/<db>-<timestamp>.sql` (if DB creds are set).
 5. Runs the build (`composer install && php artisan optimize:clear`) and your `AFTER_DEPLOY_COMMANDS`, plus an optional project `afterDeploy.sh`.
-6. Atomically switches `SERVE_DIR` to symlink the new release — this is the moment the new version goes live.
+6. Atomically re-points the `SERVE_DIR` symlink at the new release — this is the moment the new version goes live.
 
-**Rollback** just re-points `SERVE_DIR` at an older release directory. **Restore DB** pipes a chosen dump back into the database.
+**Rollback** atomically re-points `SERVE_DIR` at an older release. **Restore DB** pipes a chosen dump back into the database.
+
+> **Web-server root:** because `SERVE_DIR` resolves to a Laravel release, set your virtual host's document root to **`SERVE_DIR/public`** and enable symlink following (nginx does by default; Apache needs `Options +FollowSymLinks`).
+
+> **Upgrading from the old layout:** earlier versions symlinked each release file *into* `SERVE_DIR`. This version makes `SERVE_DIR` itself the symlink. On the first deploy/restore after upgrading, a legacy real `SERVE_DIR` is removed once and replaced with the symlink automatically — just confirm your document root points at `SERVE_DIR/public`.
 
 ---
 
