@@ -20,4 +20,8 @@ return [
     // pruned after a successful deploy. Set to 0 to keep everything.
     'keep_releases' => (int) env('KEEP_RELEASES', 5),
     'keep_db_dumps' => (int) env('KEEP_DB_DUMPS', 10),
+
+    // Gzip database dumps (recommended). Dumps are written as .sql.gz and
+    // transparently decompressed on restore.
+    'gzip_dumps' => env('GZIP_DUMPS', true),
 ];
