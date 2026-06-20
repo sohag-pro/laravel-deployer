@@ -34,9 +34,12 @@ class AsyncDeployTest extends TestCase
         {
             public bool $launched = false;
 
-            public function launch(): void
+            public ?string $ref = null;
+
+            public function launch(?string $ref = null): void
             {
                 $this->launched = true;
+                $this->ref = $ref;
             }
         };
 
@@ -56,6 +59,29 @@ class AsyncDeployTest extends TestCase
 
         $this->assertTrue($launcher->launched);
         $this->assertSame(DeployState::RUNNING, DeployState::status()['status']);
+    }
+
+    public function test_deploy_passes_a_valid_ref_to_the_launcher(): void
+    {
+        $launcher = $this->fakeLauncher();
+
+        $this->actingAs(User::factory()->create())
+            ->post('/deploy', ['ref' => 'release/v1.2.3'])
+            ->assertSessionHas('success');
+
+        $this->assertTrue($launcher->launched);
+        $this->assertSame('release/v1.2.3', $launcher->ref);
+    }
+
+    public function test_deploy_rejects_an_invalid_ref(): void
+    {
+        $launcher = $this->fakeLauncher();
+
+        $this->actingAs(User::factory()->create())
+            ->post('/deploy', ['ref' => 'foo;rm -rf /'])
+            ->assertSessionHas('error');
+
+        $this->assertFalse($launcher->launched);
     }
 
     public function test_deploy_is_refused_while_one_is_running(): void

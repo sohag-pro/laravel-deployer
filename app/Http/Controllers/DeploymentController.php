@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Console\Commands\Deploy as DeployCommand;
 use App\Support\Database;
 use App\Support\DeployLauncher;
 use App\Support\DeployState;
 use App\Support\Releases;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
@@ -113,16 +115,21 @@ class DeploymentController extends Controller
             : back()->with('error', 'Database restore failed. Check the logs.');
     }
 
-    public function deploy(DeployLauncher $launcher): RedirectResponse
+    public function deploy(Request $request, DeployLauncher $launcher): RedirectResponse
     {
         if (DeployState::running()) {
             return back()->with('error', 'A deploy is already in progress.');
         }
 
+        $ref = trim((string) $request->input('ref', ''));
+        if ($ref !== '' && ! DeployCommand::isValidRef($ref)) {
+            return back()->with('error', 'Invalid branch, tag or commit reference.');
+        }
+
         // Mark running synchronously so the dashboard reflects it immediately,
         // then launch the deploy in a detached background process.
         DeployState::markStarted();
-        $launcher->launch();
+        $launcher->launch($ref);
 
         return back()->with('success', 'Deploy started. Watch the log for progress.');
     }

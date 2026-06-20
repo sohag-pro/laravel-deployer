@@ -131,7 +131,7 @@ For production, point your web server at the deployer's own `public/` directory 
 ## Usage
 
 1. Sign in at `/` with the admin account.
-2. **Deploy** — click *Deploy*. The deploy runs in a **detached background process**, so the request returns immediately; the dashboard shows a live status badge and streams the deploy log (polled every 2s). The button is disabled while a deploy is in progress. The currently-live release is highlighted green.
+2. **Deploy** — optionally enter a **branch, tag or commit** (blank = the repository's default branch), then click *Deploy*. The deploy runs in a **detached background process**, so the request returns immediately; the dashboard shows a live status badge and streams the deploy log (polled every 2s). The button is disabled while a deploy is in progress. The currently-live release is highlighted green.
 3. **Roll back** — in *Files*, click *Restore* on any previous release to make it live again.
 4. **Database** — every deploy leaves a dump in the list. *Download* it, or *Restore* to pipe it back into the database.
 

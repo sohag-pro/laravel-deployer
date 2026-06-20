@@ -32,9 +32,14 @@
                         data-status="{{ $deploy['status'] }}">{{ ucfirst($deploy['status']) }}</span>
                 </div>
 
-                <form method="POST" action="{{ route('deploy') }}"
-                    onsubmit="return confirm('Deploy the latest commit now?');">
+                <form method="POST" action="{{ route('deploy') }}" class="flex flex-col items-center gap-3"
+                    onsubmit="return confirm('Deploy now?');">
                     @csrf
+                    <input type="text" name="ref" value="{{ old('ref') }}"
+                        placeholder="branch / tag / commit (optional)"
+                        pattern="[A-Za-z0-9._/\-]+"
+                        title="Leave blank for the default branch"
+                        class="w-64 rounded-md border border-gray-300 px-3 py-2 text-center text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
                     <button id="deploy-button" type="submit"
                         class="rounded-md bg-green-500 px-6 py-3 text-2xl font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
                         Deploy
