@@ -4,12 +4,18 @@
     <div class="min-h-screen">
         <div class="flex items-center justify-between px-12 pt-8">
             <h1 class="text-2xl font-semibold text-gray-800">Laravel Deployer</h1>
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit" class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-800">
-                    Log out
-                </button>
-            </form>
+            <div class="flex items-center gap-3">
+                <a href="{{ route('two-factor.index') }}"
+                    class="rounded-md bg-gray-200 px-4 py-2 text-sm text-gray-800 hover:bg-gray-300">
+                    Two-factor
+                </a>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="rounded-md bg-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-800">
+                        Log out
+                    </button>
+                </form>
+            </div>
         </div>
 
         @if (session('success'))

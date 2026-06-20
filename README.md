@@ -174,6 +174,7 @@ This tool can run arbitrary deploy commands, overwrite your web root, and restor
 
 - **Authentication is mandatory.** Every dashboard and action route is behind the `auth` middleware; there are no default credentials.
 - **Login is rate-limited.** After 5 failed attempts per email + IP, further attempts are locked out for 60 seconds (a `Lockout` event is dispatched).
+- **Optional TOTP two-factor.** Enable it from the dashboard (*Two-factor*); logins then require an authenticator code, with one-time recovery codes as a fallback.
 - **Destructive actions are POST + CSRF only** (deploy, restore, DB restore). Read-only downloads are GET.
 - **No shell injection.** All user-supplied names are validated against `^[A-Za-z0-9._-]+$` (no traversal, no metacharacters) and every shell argument is escaped via `escapeshellarg`.
 - **DB credentials never hit the process list** — `mysqldump`/`mysql` receive them through a temporary `0600` option file, not `-p<password>`.
