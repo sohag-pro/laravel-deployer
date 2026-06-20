@@ -31,6 +31,9 @@ Route::middleware('auth')->group(function () {
     Route::get('download/{folder}', [DeploymentController::class, 'download'])->name('download');
     Route::get('download-db/{db_file}', [DeploymentController::class, 'downloadDb'])->name('downloadDb');
 
+    // Live deploy status (polled by the dashboard)
+    Route::get('deploy-status', [DeploymentController::class, 'deployStatus'])->name('deploy.status');
+
     // Destructive actions — POST + CSRF only
     Route::post('deploy', [DeploymentController::class, 'deploy'])->name('deploy');
     Route::post('restore/{folder}', [DeploymentController::class, 'restore'])->name('restore');

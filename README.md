@@ -129,7 +129,7 @@ For production, point your web server at the deployer's own `public/` directory 
 ## Usage
 
 1. Sign in at `/` with the admin account.
-2. **Deploy** — click *Deploy*. A new release is cloned, built and switched in. The currently-live release is highlighted green.
+2. **Deploy** — click *Deploy*. The deploy runs in a **detached background process**, so the request returns immediately; the dashboard shows a live status badge and streams the deploy log (polled every 2s). The button is disabled while a deploy is in progress. The currently-live release is highlighted green.
 3. **Roll back** — in *Files*, click *Restore* on any previous release to make it live again.
 4. **Database** — every deploy leaves a dump in the list. *Download* it, or *Restore* to pipe it back into the database.
 
@@ -153,6 +153,8 @@ All deployment settings live in `config/deployer.php` and are driven by `.env`.
 | `KEEP_RELEASES` | Releases to retain; older pruned after deploy (0 = all) | `5` |
 | `KEEP_DB_DUMPS` | Database dumps to retain (0 = all) | `10` |
 | `GZIP_DUMPS` | Gzip dumps to `.sql.gz` (decompressed on restore) | `true` |
+| `DEPLOYER_PHP_BINARY` | PHP CLI used to launch the background deploy | `php` |
+| `DEPLOYER_DEPLOY_TIMEOUT` | Seconds before a stuck "running" deploy is stale | `1800` |
 | `DEPLOYER_DB_NAME` | Database of the **deployed app** to dump/restore | `myapp` |
 | `DEPLOYER_DB_USER` / `DEPLOYER_DB_PASSWORD` | Credentials for that database | |
 | `DEPLOYER_DB_HOST` / `DEPLOYER_DB_PORT` | Host/port for that database | `127.0.0.1` / `3306` |

@@ -22,16 +22,27 @@
         <div class="max-w-8xl mx-auto flex flex-col justify-center space-y-5 p-12 lg:flex-row lg:space-x-5 lg:space-y-0">
             <!-- Card 1 -->
             <div
-                class="flex h-full w-full flex-col items-center justify-between space-y-5 rounded-md border border-gray-100 bg-gray-200 bg-opacity-40 bg-clip-padding py-8 px-5 backdrop-blur-sm backdrop-filter">
-                <h2 class="pb-8 text-2xl font-medium text-gray-800">Deployment</h2>
+                class="flex h-full w-full flex-col items-center space-y-5 rounded-md border border-gray-100 bg-gray-200 bg-opacity-40 bg-clip-padding py-8 px-5 backdrop-blur-sm backdrop-filter">
+                <h2 class="text-2xl font-medium text-gray-800">Deployment</h2>
+
+                <div class="flex items-center gap-2 text-sm">
+                    <span class="text-gray-600">Status:</span>
+                    <span id="deploy-status-badge"
+                        class="rounded-md px-2 py-1 font-semibold"
+                        data-status="{{ $deploy['status'] }}">{{ ucfirst($deploy['status']) }}</span>
+                </div>
 
                 <form method="POST" action="{{ route('deploy') }}"
                     onsubmit="return confirm('Deploy the latest commit now?');">
                     @csrf
-                    <button type="submit" class="rounded-md bg-green-500 px-6 py-3 text-2xl font-semibold text-white">
+                    <button id="deploy-button" type="submit"
+                        class="rounded-md bg-green-500 px-6 py-3 text-2xl font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
                         Deploy
                     </button>
                 </form>
+
+                <pre id="deploy-log"
+                    class="hidden h-48 w-full overflow-auto rounded-md bg-gray-900 p-3 text-left text-xs text-green-200"></pre>
             </div>
 
             <!-- Card 2 -->
@@ -116,4 +127,54 @@
             </div>
         </div>
     </div>
+
+    <script>
+        (function () {
+            const statusUrl = @json(route('deploy.status'));
+            const badge = document.getElementById('deploy-status-badge');
+            const log = document.getElementById('deploy-log');
+            const button = document.getElementById('deploy-button');
+
+            const colors = {
+                running: 'bg-yellow-200 text-yellow-900',
+                success: 'bg-green-200 text-green-900',
+                failed: 'bg-red-200 text-red-900',
+                idle: 'bg-gray-200 text-gray-700',
+            };
+
+            function render(data) {
+                badge.textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+                badge.className = 'rounded-md px-2 py-1 font-semibold ' + (colors[data.status] || colors.idle);
+                button.disabled = data.running;
+
+                if (data.log && data.log.trim().length) {
+                    log.classList.remove('hidden');
+                    const atBottom = log.scrollHeight - log.clientHeight <= log.scrollTop + 4;
+                    log.textContent = data.log;
+                    if (atBottom) log.scrollTop = log.scrollHeight;
+                } else {
+                    log.classList.add('hidden');
+                }
+            }
+
+            let timer = null;
+            async function poll() {
+                try {
+                    const res = await fetch(statusUrl, { headers: { 'Accept': 'application/json' } });
+                    const data = await res.json();
+                    render(data);
+                    if (!data.running && timer) { clearInterval(timer); timer = null; }
+                } catch (e) { /* keep polling */ }
+            }
+
+            const initial = badge.dataset.status;
+            poll();
+            if (initial === 'running') {
+                timer = setInterval(poll, 2000);
+            }
+
+            // When a deploy is kicked off, the page reloads (form POST) with the
+            // status already "running", so polling starts on the fresh load.
+        })();
+    </script>
 @endsection

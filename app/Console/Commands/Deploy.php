@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Support\Database;
+use App\Support\DeployState;
 use App\Support\Releases;
 use App\Support\Retention;
 use Illuminate\Console\Command;
@@ -31,8 +32,13 @@ class Deploy extends Command
      */
     public function handle(): int
     {
+        $tag = now()->format('Y-m-d__H_i_s');
+
+        // Reuse the run already marked by the dashboard, or start one when the
+        // command is invoked directly from the CLI.
+        $id = DeployState::running() ? (DeployState::status()['id'] ?? $tag) : DeployState::markStarted($tag);
+
         try {
-            $tag = now()->format('Y-m-d__H_i_s');
             $one_time_commands = config('deployer.one_time_commands');
             $commands = config('deployer.commands');
             $git_remote_url = config('deployer.git_remote_url');
@@ -44,6 +50,7 @@ class Deploy extends Command
 
             if (empty($git_remote_url)) {
                 $this->error('GIT_REMOTE_URL is not configured.');
+                DeployState::markFinished($id, false, 'GIT_REMOTE_URL is not configured.');
 
                 return self::FAILURE;
             }
@@ -120,11 +127,13 @@ class Deploy extends Command
             }
 
             $this->info("Deployed release {$tag}.");
+            DeployState::markFinished($id, true, "Deployed release {$tag}.");
 
             return self::SUCCESS;
         } catch (Throwable $th) {
             Log::error('Deployment failed', ['exception' => $th]);
             $this->error($th->getMessage());
+            DeployState::markFinished($id, false, $th->getMessage());
 
             return self::FAILURE;
         }

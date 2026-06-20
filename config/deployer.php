@@ -24,4 +24,11 @@ return [
     // Gzip database dumps (recommended). Dumps are written as .sql.gz and
     // transparently decompressed on restore.
     'gzip_dumps' => env('GZIP_DUMPS', true),
+
+    // PHP CLI binary used to launch the background deploy process.
+    'php_binary' => env('DEPLOYER_PHP_BINARY', 'php'),
+
+    // A deploy still marked "running" after this many seconds is treated as
+    // stale, so a crashed deploy never blocks the dashboard permanently.
+    'deploy_timeout' => (int) env('DEPLOYER_DEPLOY_TIMEOUT', 1800),
 ];
