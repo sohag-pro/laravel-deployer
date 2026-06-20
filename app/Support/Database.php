@@ -13,12 +13,18 @@ use Symfony\Component\Process\Process;
  */
 class Database
 {
+    /**
+     * mysqldump flags for a consistent, lock-light, complete backup.
+     */
+    protected const DUMP_FLAGS = '--single-transaction --quick --routines --triggers --no-tablespaces';
+
     public function __construct(
         protected ?string $name,
         protected ?string $user,
         protected ?string $password,
         protected string $host = '127.0.0.1',
         protected string $port = '3306',
+        protected bool $gzip = true,
     ) {}
 
     public static function fromConfig(): self
@@ -29,6 +35,7 @@ class Database
             config('deployer.db_password'),
             config('deployer.db_host', '127.0.0.1'),
             config('deployer.db_port', '3306'),
+            (bool) config('deployer.gzip_dumps', true),
         );
     }
 
@@ -38,15 +45,43 @@ class Database
     }
 
     /**
-     * Dump the configured database to $targetPath. Returns true on success.
+     * Final path a dump of $targetPath would be written to (adds .gz when
+     * gzip is enabled and the path is not already compressed).
      */
-    public function dump(string $targetPath): bool
+    public function dumpPath(string $targetPath): string
     {
-        return $this->run('mysqldump', $targetPath, append: true);
+        if ($this->gzip && ! str_ends_with($targetPath, '.gz')) {
+            return $targetPath.'.gz';
+        }
+
+        return $targetPath;
     }
 
     /**
-     * Restore the configured database from $sourcePath. Returns true on success.
+     * Dump the configured database to $targetPath (a .gz suffix is added when
+     * gzip is enabled). Returns true on success.
+     */
+    public function dump(string $targetPath): bool
+    {
+        $target = $this->dumpPath($targetPath);
+
+        $pipe = $this->gzip ? ' | gzip' : '';
+
+        return $this->run(function (string $optionFile) use ($pipe, $target) {
+            return sprintf(
+                'mysqldump --defaults-extra-file=%s %s %s%s > %s',
+                escapeshellarg($optionFile),
+                self::DUMP_FLAGS,
+                escapeshellarg($this->name),
+                $pipe,
+                escapeshellarg($target),
+            );
+        });
+    }
+
+    /**
+     * Restore the configured database from $sourcePath. Gzipped dumps
+     * (.gz) are decompressed on the fly. Returns true on success.
      */
     public function restore(string $sourcePath): bool
     {
@@ -54,13 +89,25 @@ class Database
             throw new RuntimeException("SQL file not found: {$sourcePath}");
         }
 
-        return $this->run('mysql', $sourcePath, append: false);
+        $reader = str_ends_with($sourcePath, '.gz')
+            ? sprintf('gunzip -c %s', escapeshellarg($sourcePath))
+            : sprintf('cat %s', escapeshellarg($sourcePath));
+
+        return $this->run(function (string $optionFile) use ($reader) {
+            return sprintf(
+                '%s | mysql --defaults-extra-file=%s %s',
+                $reader,
+                escapeshellarg($optionFile),
+                escapeshellarg($this->name),
+            );
+        });
     }
 
     /**
-     * Run a mysql-family client, streaming a file in or out via redirection.
+     * Build a shell command via $builder (given the temp option-file path),
+     * run it, and clean up the credentials file afterwards.
      */
-    protected function run(string $binary, string $file, bool $append): bool
+    protected function run(callable $builder): bool
     {
         if (! $this->isConfigured()) {
             throw new RuntimeException('Database credentials are not configured.');
@@ -69,19 +116,7 @@ class Database
         $optionFile = $this->writeOptionFile();
 
         try {
-            $redirect = $append ? '>' : '<';
-            // Credentials come from the option file; only trusted/validated
-            // values are interpolated and every one is shell-escaped.
-            $command = sprintf(
-                '%s --defaults-extra-file=%s %s %s %s',
-                $binary,
-                escapeshellarg($optionFile),
-                escapeshellarg($this->name),
-                $redirect,
-                escapeshellarg($file),
-            );
-
-            $process = Process::fromShellCommandline($command);
+            $process = Process::fromShellCommandline($builder($optionFile));
             $process->setTimeout(600);
             $process->run();
 
