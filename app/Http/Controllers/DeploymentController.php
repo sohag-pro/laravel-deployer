@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Support\Database;
+use App\Support\DeployLauncher;
+use App\Support\DeployState;
 use App\Support\Releases;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
@@ -27,8 +29,9 @@ class DeploymentController extends Controller
 
         $db_files = $this->listEntries($db_dir, directoriesOnly: false);
         $folders = $this->listEntries($version_dir, directoriesOnly: true);
+        $deploy = DeployState::status();
 
-        return view('home', compact('folders', 'live', 'db_files'));
+        return view('home', compact('folders', 'live', 'db_files', 'deploy'));
     }
 
     public function download(string $folder): BinaryFileResponse|RedirectResponse
@@ -110,15 +113,33 @@ class DeploymentController extends Controller
             : back()->with('error', 'Database restore failed. Check the logs.');
     }
 
-    public function deploy(): RedirectResponse
+    public function deploy(DeployLauncher $launcher): RedirectResponse
     {
-        $exitCode = Artisan::call('deploy');
-
-        if ($exitCode !== 0) {
-            return back()->with('error', 'Deploy failed. '.trim(Artisan::output()));
+        if (DeployState::running()) {
+            return back()->with('error', 'A deploy is already in progress.');
         }
 
-        return back()->with('success', 'Deployed successfully.');
+        // Mark running synchronously so the dashboard reflects it immediately,
+        // then launch the deploy in a detached background process.
+        DeployState::markStarted();
+        $launcher->launch();
+
+        return back()->with('success', 'Deploy started. Watch the log for progress.');
+    }
+
+    /**
+     * Live deploy status + log tail, polled by the dashboard.
+     */
+    public function deployStatus(): JsonResponse
+    {
+        $status = DeployState::status();
+
+        return response()->json([
+            'status' => $status['status'],
+            'message' => $status['message'],
+            'running' => DeployState::running(),
+            'log' => DeployState::logTail(),
+        ]);
     }
 
     /**
