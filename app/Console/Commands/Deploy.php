@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Support\Database;
+use App\Support\DeployNotifier;
 use App\Support\DeployState;
 use App\Support\HealthCheck;
 use App\Support\Releases;
@@ -51,9 +52,8 @@ class Deploy extends Command
 
             if (empty($git_remote_url)) {
                 $this->error('GIT_REMOTE_URL is not configured.');
-                DeployState::markFinished($id, false, 'GIT_REMOTE_URL is not configured.');
 
-                return self::FAILURE;
+                return $this->finish($id, false, 'GIT_REMOTE_URL is not configured.');
             }
 
             // Note: $serve_dir is intentionally not pre-created — it is managed
@@ -66,9 +66,8 @@ class Deploy extends Command
             $ref = trim((string) $this->option('ref'));
             if ($ref !== '' && ! self::isValidRef($ref)) {
                 $this->error("Invalid git ref: {$ref}");
-                DeployState::markFinished($id, false, "Invalid git ref: {$ref}");
 
-                return self::FAILURE;
+                return $this->finish($id, false, "Invalid git ref: {$ref}");
             }
 
             // Clone the repository into the new release directory.
@@ -154,9 +153,8 @@ class Deploy extends Command
                         ? "Health check failed; rolled back to {$previousLive}."
                         : 'Health check failed; no previous release to roll back to.';
                     $this->error($message);
-                    DeployState::markFinished($id, false, $message);
 
-                    return self::FAILURE;
+                    return $this->finish($id, false, $message);
                 }
 
                 $this->info('Health check passed.');
@@ -170,16 +168,25 @@ class Deploy extends Command
             }
 
             $this->info("Deployed release {$tag}.");
-            DeployState::markFinished($id, true, "Deployed release {$tag}.");
 
-            return self::SUCCESS;
+            return $this->finish($id, true, "Deployed release {$tag}.");
         } catch (Throwable $th) {
             Log::error('Deployment failed', ['exception' => $th]);
             $this->error($th->getMessage());
-            DeployState::markFinished($id, false, $th->getMessage());
 
-            return self::FAILURE;
+            return $this->finish($id, false, $th->getMessage());
         }
+    }
+
+    /**
+     * Record the final deploy state, send notifications and map to an exit code.
+     */
+    protected function finish(string $id, bool $ok, string $message): int
+    {
+        DeployState::markFinished($id, $ok, $message);
+        DeployNotifier::send($ok, $message);
+
+        return $ok ? self::SUCCESS : self::FAILURE;
     }
 
     protected function ensureDirectory(string $path): void
