@@ -179,7 +179,7 @@ class DeploymentController extends Controller
         $version_dir = config('deployer.base_dir').config('deployer.version_dir');
         $zip_file = $version_dir.'/'.$folder.'.zip';
 
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         $zip->open($zip_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
         $files = new \RecursiveIteratorIterator(

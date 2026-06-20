@@ -4,13 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class DeploymentSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @dataProvider guardedRoutes */
+    #[DataProvider('guardedRoutes')]
     public function test_guests_cannot_reach_deployment_actions(string $method, string $uri): void
     {
         $this->call($method, $uri)->assertRedirect(route('login'));
@@ -37,7 +38,7 @@ class DeploymentSecurityTest extends TestCase
         $this->get('/restore-db/dump.sql')->assertStatus(405);
     }
 
-    /** @dataProvider maliciousNames */
+    #[DataProvider('maliciousNames')]
     public function test_unsafe_filenames_are_rejected_without_touching_the_shell(string $name): void
     {
         config(['deployer.base_dir' => sys_get_temp_dir(), 'deployer.db_dir' => '/db']);

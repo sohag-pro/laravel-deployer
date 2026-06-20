@@ -19,8 +19,7 @@ class Database
         protected ?string $password,
         protected string $host = '127.0.0.1',
         protected string $port = '3306',
-    ) {
-    }
+    ) {}
 
     public static function fromConfig(): self
     {
