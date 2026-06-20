@@ -63,6 +63,8 @@ A single deploy run (`php artisan deploy`):
 5. Runs the build (`composer install && php artisan optimize:clear`) and your `AFTER_DEPLOY_COMMANDS`, plus an optional project `afterDeploy.sh`.
 6. Atomically re-points the `SERVE_DIR` symlink at the new release — this is the moment the new version goes live.
 
+If `DEPLOYER_HEALTH_URL` is set, the new release is probed after step 6; if it never returns `2xx`, the previous release is **automatically rolled back** and the deploy is marked failed.
+
 **Rollback** atomically re-points `SERVE_DIR` at an older release. **Restore DB** pipes a chosen dump back into the database.
 
 > **Web-server root:** because `SERVE_DIR` resolves to a Laravel release, set your virtual host's document root to **`SERVE_DIR/public`** and enable symlink following (nginx does by default; Apache needs `Options +FollowSymLinks`).
@@ -155,6 +157,8 @@ All deployment settings live in `config/deployer.php` and are driven by `.env`.
 | `GZIP_DUMPS` | Gzip dumps to `.sql.gz` (decompressed on restore) | `true` |
 | `DEPLOYER_PHP_BINARY` | PHP CLI used to launch the background deploy | `php` |
 | `DEPLOYER_DEPLOY_TIMEOUT` | Seconds before a stuck "running" deploy is stale | `1800` |
+| `DEPLOYER_HEALTH_URL` | Probe after switch; auto-rollback on failure (unset = off) | `https://app.example.com/up` |
+| `DEPLOYER_HEALTH_RETRIES` / `DEPLOYER_HEALTH_DELAY` | Probe attempts and seconds between them | `5` / `3` |
 | `DEPLOYER_DB_NAME` | Database of the **deployed app** to dump/restore | `myapp` |
 | `DEPLOYER_DB_USER` / `DEPLOYER_DB_PASSWORD` | Credentials for that database | |
 | `DEPLOYER_DB_HOST` / `DEPLOYER_DB_PORT` | Host/port for that database | `127.0.0.1` / `3306` |

@@ -31,4 +31,10 @@ return [
     // A deploy still marked "running" after this many seconds is treated as
     // stale, so a crashed deploy never blocks the dashboard permanently.
     'deploy_timeout' => (int) env('DEPLOYER_DEPLOY_TIMEOUT', 1800),
+
+    // Post-deploy health check. If set, the new release is probed after it
+    // goes live; on failure the previous release is restored automatically.
+    'health_url' => env('DEPLOYER_HEALTH_URL'),
+    'health_retries' => (int) env('DEPLOYER_HEALTH_RETRIES', 5),
+    'health_delay' => (int) env('DEPLOYER_HEALTH_DELAY', 3),
 ];
