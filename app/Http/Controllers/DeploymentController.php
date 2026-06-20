@@ -117,19 +117,14 @@ class DeploymentController extends Controller
 
     public function deploy(Request $request, DeployLauncher $launcher): RedirectResponse
     {
-        if (DeployState::running()) {
-            return back()->with('error', 'A deploy is already in progress.');
-        }
-
         $ref = trim((string) $request->input('ref', ''));
         if ($ref !== '' && ! DeployCommand::isValidRef($ref)) {
             return back()->with('error', 'Invalid branch, tag or commit reference.');
         }
 
-        // Mark running synchronously so the dashboard reflects it immediately,
-        // then launch the deploy in a detached background process.
-        DeployState::markStarted();
-        $launcher->launch($ref);
+        if (! $launcher->trigger($ref)) {
+            return back()->with('error', 'A deploy is already in progress.');
+        }
 
         return back()->with('success', 'Deploy started. Watch the log for progress.');
     }
