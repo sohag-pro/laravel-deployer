@@ -41,4 +41,8 @@ return [
     // Redirect insecure requests to HTTPS and emit HSTS. Strongly recommended
     // in production; ignored on the local environment.
     'force_https' => (bool) env('DEPLOYER_FORCE_HTTPS', false),
+
+    // Deploy notifications. Both are optional; leave blank to disable.
+    'notify_slack_webhook' => env('DEPLOYER_SLACK_WEBHOOK'),
+    'notify_email' => env('DEPLOYER_NOTIFY_EMAIL'),
 ];

@@ -159,6 +159,8 @@ All deployment settings live in `config/deployer.php` and are driven by `.env`.
 | `DEPLOYER_DEPLOY_TIMEOUT` | Seconds before a stuck "running" deploy is stale | `1800` |
 | `DEPLOYER_HEALTH_URL` | Probe after switch; auto-rollback on failure (unset = off) | `https://app.example.com/up` |
 | `DEPLOYER_HEALTH_RETRIES` / `DEPLOYER_HEALTH_DELAY` | Probe attempts and seconds between them | `5` / `3` |
+| `DEPLOYER_FORCE_HTTPS` | Redirect to HTTPS + send HSTS (off on local) | `false` |
+| `DEPLOYER_SLACK_WEBHOOK` / `DEPLOYER_NOTIFY_EMAIL` | Notify on deploy success/failure (blank = off) | |
 | `DEPLOYER_DB_NAME` | Database of the **deployed app** to dump/restore | `myapp` |
 | `DEPLOYER_DB_USER` / `DEPLOYER_DB_PASSWORD` | Credentials for that database | |
 | `DEPLOYER_DB_HOST` / `DEPLOYER_DB_PORT` | Host/port for that database | `127.0.0.1` / `3306` |
