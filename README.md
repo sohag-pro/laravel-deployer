@@ -150,6 +150,8 @@ All deployment settings live in `config/deployer.php` and are driven by `.env`.
 | `STORAGE_DIR` | Shared storage subfolder under `BASE_DIR` | `storage` |
 | `DB_DIR` | DB dumps subfolder under `BASE_DIR` | `database` |
 | `AFTER_DEPLOY_COMMANDS` | Comma-separated commands run in each release | `php artisan config:cache,php artisan route:cache` |
+| `KEEP_RELEASES` | Releases to retain; older pruned after deploy (0 = all) | `5` |
+| `KEEP_DB_DUMPS` | Database dumps to retain (0 = all) | `10` |
 | `DEPLOYER_DB_NAME` | Database of the **deployed app** to dump/restore | `myapp` |
 | `DEPLOYER_DB_USER` / `DEPLOYER_DB_PASSWORD` | Credentials for that database | |
 | `DEPLOYER_DB_HOST` / `DEPLOYER_DB_PORT` | Host/port for that database | `127.0.0.1` / `3306` |
