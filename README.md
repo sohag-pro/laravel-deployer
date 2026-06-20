@@ -161,6 +161,10 @@ curl -X POST https://deployer.example.com/api/deploy \
   -d ref=main
 ```
 
+### GitHub webhook
+
+Set `DEPLOYER_GITHUB_WEBHOOK_SECRET` to enable `POST /api/webhooks/github`, then add a GitHub webhook (content type `application/json`, the same secret, the *push* event). Each push triggers a deploy of the pushed branch; the signature is verified via `X-Hub-Signature-256`. Restrict to one branch with `DEPLOYER_WEBHOOK_BRANCH` (blank = deploy whichever branch was pushed).
+
 ---
 
 ## Configuration
