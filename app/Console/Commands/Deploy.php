@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Support\Database;
 use App\Support\DeployState;
+use App\Support\HealthCheck;
 use App\Support\Releases;
 use App\Support\Retention;
 use Illuminate\Console\Command;
@@ -110,7 +111,10 @@ class Deploy extends Command
                 $this->exec(sprintf('cd %s && sh afterDeploy.sh', escapeshellarg($version_dir)));
             }
 
-            // Atomically switch the live serve symlink to the new release.
+            // Remember the live release so we can roll back if the new one is
+            // unhealthy, then atomically switch to the new release.
+            $releasesRoot = $base_dir.config('deployer.version_dir');
+            $previousLive = Releases::current($serve_dir);
             Releases::switch($serve_dir, $version_dir);
 
             // First-deploy-only commands (e.g. key:generate).
@@ -118,8 +122,32 @@ class Deploy extends Command
                 $this->exec(sprintf('cd %s && %s', escapeshellarg($version_dir), $one_time_commands));
             }
 
+            // Post-deploy health check; roll back to the previous release on
+            // failure so a broken build never stays live.
+            $healthUrl = (string) config('deployer.health_url');
+            if ($healthUrl !== '') {
+                $this->info("Health check: {$healthUrl}");
+                $healthy = HealthCheck::passes(
+                    $healthUrl,
+                    (int) config('deployer.health_retries', 5),
+                    (int) config('deployer.health_delay', 3),
+                );
+
+                if (! $healthy) {
+                    $rolledBack = $this->rollback($serve_dir, $releasesRoot, $previousLive);
+                    $message = $rolledBack
+                        ? "Health check failed; rolled back to {$previousLive}."
+                        : 'Health check failed; no previous release to roll back to.';
+                    $this->error($message);
+                    DeployState::markFinished($id, false, $message);
+
+                    return self::FAILURE;
+                }
+
+                $this->info('Health check passed.');
+            }
+
             // Prune old releases and dumps, never touching the live release.
-            $releasesRoot = $base_dir.config('deployer.version_dir');
             $prunedReleases = Retention::pruneReleases($releasesRoot, (int) config('deployer.keep_releases'), $tag);
             $prunedDumps = Retention::pruneDumps($db_dir, (int) config('deployer.keep_db_dumps'));
             if ($prunedReleases || $prunedDumps) {
@@ -144,6 +172,27 @@ class Deploy extends Command
         if (! file_exists($path)) {
             mkdir($path, 0755, true);
         }
+    }
+
+    /**
+     * Re-point the serve symlink at a previous release. Returns false when
+     * there is no previous release to roll back to.
+     */
+    protected function rollback(string $serveDir, string $releasesRoot, ?string $previousLive): bool
+    {
+        if (empty($previousLive)) {
+            return false;
+        }
+
+        $previousDir = rtrim($releasesRoot, '/').'/'.$previousLive;
+
+        if (! is_dir($previousDir)) {
+            return false;
+        }
+
+        Releases::switch($serveDir, $previousDir);
+
+        return true;
     }
 
     /**
