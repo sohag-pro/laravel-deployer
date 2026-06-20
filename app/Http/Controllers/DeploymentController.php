@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Support\Database;
+use App\Support\Releases;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\Process\Process;
 use Throwable;
 
 class DeploymentController extends Controller
@@ -18,13 +18,8 @@ class DeploymentController extends Controller
         $base_dir = config('deployer.base_dir');
         $version_dir = $base_dir.config('deployer.version_dir');
         $db_dir = $base_dir.config('deployer.db_dir');
-        $live = null;
-
-        // Resolve the currently-served version from the symlink target.
-        if (file_exists($serve_dir)) {
-            $parts = @explode('/', (string) @readlink("$serve_dir/app"));
-            $live = $parts[count($parts) - 2] ?? null;
-        }
+        // The currently-served release is the target of the serve symlink.
+        $live = Releases::current($serve_dir);
 
         $this->ensureDirectory($base_dir);
         $this->ensureDirectory($version_dir);
@@ -67,14 +62,14 @@ class DeploymentController extends Controller
             return back()->with('error', 'Serve directory is not configured.');
         }
 
-        // Atomically re-point the serve directory at the chosen version.
-        Process::fromShellCommandline(
-            sprintf('rm -rf %s', escapeshellarg($serve_dir).'/*')
-        )->mustRun();
+        // Atomically re-point the serve symlink at the chosen release.
+        try {
+            Releases::switch($serve_dir, $version_dir);
+        } catch (Throwable $e) {
+            Log::error('Release restore failed', ['exception' => $e]);
 
-        Process::fromShellCommandline(
-            sprintf('ln -s %s %s', escapeshellarg($version_dir).'/*', escapeshellarg($serve_dir))
-        )->mustRun();
+            return back()->with('error', 'Restore failed: '.$e->getMessage());
+        }
 
         return back()->with('success', 'Restored successfully.');
     }
