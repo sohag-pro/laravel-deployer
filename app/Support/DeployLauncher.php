@@ -13,6 +13,23 @@ use Symfony\Component\Process\Process;
  */
 class DeployLauncher
 {
+    /**
+     * Start a deploy unless one is already running. Marks the run started
+     * synchronously and launches it in the background. Returns false when a
+     * deploy is already in progress.
+     */
+    public function trigger(?string $ref = null): bool
+    {
+        if (DeployState::running()) {
+            return false;
+        }
+
+        DeployState::markStarted();
+        $this->launch($ref);
+
+        return true;
+    }
+
     public function launch(?string $ref = null): void
     {
         $php = (string) config('deployer.php_binary', 'php');

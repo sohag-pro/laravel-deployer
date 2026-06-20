@@ -141,6 +141,28 @@ All actions require confirmation and are protected by authentication and CSRF.
 
 ---
 
+## Remote API
+
+Trigger and monitor deploys from CI or scripts using a [Sanctum](https://laravel.com/docs/sanctum) token. Mint one with:
+
+```bash
+php artisan deployer:token "ci"        # uses the first admin; or --email=you@example.com
+```
+
+| Method & path | Purpose |
+| --- | --- |
+| `POST /api/deploy` | Start a deploy. Optional `ref` (branch/tag/commit). `202` on launch, `409` if one is already running, `422` for an invalid ref. |
+| `GET /api/deploy/status` | Current deploy status (`idle`/`running`/`success`/`failed`). |
+
+```bash
+curl -X POST https://deployer.example.com/api/deploy \
+  -H "Authorization: Bearer <token>" \
+  -H "Accept: application/json" \
+  -d ref=main
+```
+
+---
+
 ## Configuration
 
 All deployment settings live in `config/deployer.php` and are driven by `.env`.
