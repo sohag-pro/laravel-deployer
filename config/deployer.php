@@ -45,4 +45,9 @@ return [
     // Deploy notifications. Both are optional; leave blank to disable.
     'notify_slack_webhook' => env('DEPLOYER_SLACK_WEBHOOK'),
     'notify_email' => env('DEPLOYER_NOTIFY_EMAIL'),
+
+    // GitHub push webhook. Set the secret to enable POST /api/webhooks/github;
+    // restrict to a single branch with DEPLOYER_WEBHOOK_BRANCH (blank = any).
+    'github_webhook_secret' => env('DEPLOYER_GITHUB_WEBHOOK_SECRET'),
+    'webhook_branch' => env('DEPLOYER_WEBHOOK_BRANCH'),
 ];
