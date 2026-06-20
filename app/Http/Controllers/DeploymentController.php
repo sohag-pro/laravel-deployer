@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Database;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\Process\Process;
+use Throwable;
 
 class DeploymentController extends Controller
 {
-    /**
-     * @return mixed
-     */
     public function index()
     {
         $serve_dir = config('deployer.serve_dir');
@@ -17,182 +20,181 @@ class DeploymentController extends Controller
         $db_dir = $base_dir.config('deployer.db_dir');
         $live = null;
 
-        // check if exisit serve directory
+        // Resolve the currently-served version from the symlink target.
         if (file_exists($serve_dir)) {
-            // get the link directory with serve directory
-            $live = @explode('/', readlink("$serve_dir/app"));
-            $live = $live[count($live) - 2] ?? null;
+            $parts = @explode('/', (string) @readlink("$serve_dir/app"));
+            $live = $parts[count($parts) - 2] ?? null;
         }
 
-        // Check if base dir exists
-        if (! file_exists($base_dir)) {
-            mkdir($base_dir, 0777, true);
-        }
+        $this->ensureDirectory($base_dir);
+        $this->ensureDirectory($version_dir);
+        $this->ensureDirectory($db_dir);
 
-        // Check if version dir exists
-        if (! file_exists($version_dir)) {
-            mkdir($version_dir, 0777, true);
-        }
-
-        // Check if db dir exists
-        if (! file_exists($db_dir)) {
-            mkdir($db_dir, 0777, true);
-        }
-
-        $db_files = array_diff(scandir($db_dir), ['.', '..']);
-        // make array with file name and created date time
-        $db_files = array_map(function ($file) use ($db_dir) {
-            return [
-                'name' => $file,
-                'created_at' => date('Y-m-d H:i:s', filectime($db_dir.'/'.$file)),
-            ];
-        }, $db_files);
-
-        // Sort db files by created date time
-        usort($db_files, function ($a, $b) {
-            return $a['created_at'] <=> $b['created_at'];
-        });
-
-        // Reverse the order
-        $db_files = array_reverse($db_files);
-
-        // Read folders in version dir
-        $folders = array_diff(scandir($version_dir), ['.', '..']);
-
-        // remove files from the array
-        $folders = array_filter($folders, function ($folder) use ($version_dir) {
-            return is_dir($version_dir.'/'.$folder);
-        });
-
-        // Make an array with folder anme and created date time
-        $folders = array_map(function ($folder) use ($version_dir) {
-            return [
-                'name' => $folder,
-                'created_at' => date('Y-m-d H:i:s', filectime($version_dir.'/'.$folder)),
-            ];
-        }, $folders);
-
-        // Sort folders by created date time
-        usort($folders, function ($a, $b) {
-            return $a['created_at'] <=> $b['created_at'];
-        });
-
-        // Reverse the order
-        $folders = array_reverse($folders);
+        $db_files = $this->listEntries($db_dir, directoriesOnly: false);
+        $folders = $this->listEntries($version_dir, directoriesOnly: true);
 
         return view('home', compact('folders', 'live', 'db_files'));
     }
 
-    public function download($folder)
+    public function download(string $folder): BinaryFileResponse|RedirectResponse
     {
-        $base_dir = config('deployer.base_dir');
-        $version_dir = $base_dir.config('deployer.version_dir');
+        $folder = $this->safeName($folder);
+        $version_dir = config('deployer.base_dir').config('deployer.version_dir');
         $zip_file = $version_dir.'/'.$folder.'.zip';
 
-        // Check if zip file exists
+        if (! is_dir($version_dir.'/'.$folder)) {
+            return back()->with('error', 'Version not found.');
+        }
+
         if (! file_exists($zip_file)) {
             $this->zip($folder);
         }
 
-        // Download zip file
         return response()->download($zip_file);
     }
 
-    public function restore($folder)
+    public function restore(string $folder): RedirectResponse
     {
+        $folder = $this->safeName($folder);
         $serve_dir = config('deployer.serve_dir');
-        $base_dir = config('deployer.base_dir');
-        $version_dir = $base_dir.config('deployer.version_dir').'/'.$folder;
+        $version_dir = config('deployer.base_dir').config('deployer.version_dir').'/'.$folder;
 
-        // Check if folder exists
-        if (! file_exists($version_dir)) {
-            return back()->with('error', 'Folder not found');
+        if (! is_dir($version_dir)) {
+            return back()->with('error', 'Version not found.');
         }
 
-        // Remove any previous link of server dir
-        exec("rm -rf $serve_dir/*");
-
-        // Link version dir to serve dir
-        exec("ln -s $version_dir/* $serve_dir");
-
-        return redirect()->back()->with('success', 'Restored successfully');
-    }
-
-    public function downloadDb($file)
-    {
-        $base_dir = config('deployer.base_dir');
-        $db_dir = $base_dir.config('deployer.db_dir');
-
-        // Check if file exists
-        if (! file_exists($db_dir.'/'.$file)) {
-            return back()->with('error', 'File not found');
+        if (empty($serve_dir)) {
+            return back()->with('error', 'Serve directory is not configured.');
         }
 
-        // Download file
-        return response()->download($db_dir.'/'.$file);
+        // Atomically re-point the serve directory at the chosen version.
+        Process::fromShellCommandline(
+            sprintf('rm -rf %s', escapeshellarg($serve_dir).'/*')
+        )->mustRun();
+
+        Process::fromShellCommandline(
+            sprintf('ln -s %s %s', escapeshellarg($version_dir).'/*', escapeshellarg($serve_dir))
+        )->mustRun();
+
+        return back()->with('success', 'Restored successfully.');
     }
 
-    public function restoreDb($file)
+    public function downloadDb(string $db_file): BinaryFileResponse|RedirectResponse
     {
-        $base_dir = config('deployer.base_dir');
-        $db_dir = $base_dir.config('deployer.db_dir');
-        $db_name = config('deployer.db_name');
-        $db_user = config('deployer.db_user');
-        $db_password = config('deployer.db_password');
-        $db_host = config('deployer.db_host');
-        $db_port = config('deployer.db_port');
+        $db_file = $this->safeName($db_file);
+        $db_dir = config('deployer.base_dir').config('deployer.db_dir');
+        $path = $db_dir.'/'.$db_file;
 
-        // Check if file exists
-        if (! file_exists($db_dir.'/'.$file)) {
-            return back()->with('error', 'File not found');
+        if (! is_file($path)) {
+            return back()->with('error', 'File not found.');
         }
 
-        // Restore database
-        exec("mysql -u $db_user -p$db_password -h $db_host -P $db_port $db_name < $db_dir/$file");
-
-        return redirect()->back()->with('success', 'Restored successfully');
+        return response()->download($path);
     }
 
-    public function deploy()
+    public function restoreDb(string $db_file): RedirectResponse
     {
-        $response = Artisan::call('deploy');
+        $db_file = $this->safeName($db_file);
+        $db_dir = config('deployer.base_dir').config('deployer.db_dir');
+        $path = $db_dir.'/'.$db_file;
 
-        if ($response !== true) {
-            return redirect()->back()->with('error', 'Deploy failed. '.$response);
+        if (! is_file($path)) {
+            return back()->with('error', 'File not found.');
         }
 
-        return redirect()->back()->with('success', 'Deployed successfully');
+        try {
+            $ok = Database::fromConfig()->restore($path);
+        } catch (Throwable $e) {
+            Log::error('Database restore failed', ['exception' => $e]);
+
+            return back()->with('error', 'Restore failed: '.$e->getMessage());
+        }
+
+        return $ok
+            ? back()->with('success', 'Database restored successfully.')
+            : back()->with('error', 'Database restore failed. Check the logs.');
     }
 
-    protected function zip($folder)
+    public function deploy(): RedirectResponse
     {
-        $base_dir = config('deployer.base_dir');
-        $version_dir = $base_dir.config('deployer.version_dir');
+        $exitCode = Artisan::call('deploy');
+
+        if ($exitCode !== 0) {
+            return back()->with('error', 'Deploy failed. '.trim(Artisan::output()));
+        }
+
+        return back()->with('success', 'Deployed successfully.');
+    }
+
+    /**
+     * Reject any path component that is not a plain, safe file/folder name.
+     * Blocks traversal (..), separators and shell metacharacters before the
+     * value is ever used to build a filesystem path or a command.
+     */
+    protected function safeName(string $name): string
+    {
+        abort_unless(
+            $name !== ''
+                && ! in_array($name, ['.', '..'], true)
+                && $name === basename($name)
+                && preg_match('/^[A-Za-z0-9._-]+$/', $name),
+            404
+        );
+
+        return $name;
+    }
+
+    protected function ensureDirectory(string $path): void
+    {
+        if (! file_exists($path)) {
+            mkdir($path, 0755, true);
+        }
+    }
+
+    /**
+     * List directory entries as [name, created_at], newest first.
+     */
+    protected function listEntries(string $dir, bool $directoriesOnly): array
+    {
+        $entries = array_diff(scandir($dir) ?: [], ['.', '..']);
+
+        $entries = array_filter($entries, function ($entry) use ($dir, $directoriesOnly) {
+            return ! $directoriesOnly || is_dir($dir.'/'.$entry);
+        });
+
+        $entries = array_map(function ($entry) use ($dir) {
+            return [
+                'name' => $entry,
+                'created_at' => date('Y-m-d H:i:s', filectime($dir.'/'.$entry)),
+            ];
+        }, $entries);
+
+        usort($entries, fn ($a, $b) => $b['created_at'] <=> $a['created_at']);
+
+        return array_values($entries);
+    }
+
+    protected function zip(string $folder): void
+    {
+        $version_dir = config('deployer.base_dir').config('deployer.version_dir');
         $zip_file = $version_dir.'/'.$folder.'.zip';
 
-        // Create zip file
         $zip = new \ZipArchive();
         $zip->open($zip_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
-        // Create recursive directory iterator
         $files = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($version_dir.'/'.$folder),
             \RecursiveIteratorIterator::LEAVES_ONLY
         );
 
-        foreach ($files as $name => $file) {
-            // Skip directories (they would be added automatically)
+        foreach ($files as $file) {
             if (! $file->isDir()) {
-                // Get real and relative path for current file
                 $filePath = $file->getRealPath();
                 $relativePath = substr($filePath, strlen($version_dir.'/'.$folder) + 1);
-
-                // Add current file to archive
                 $zip->addFile($filePath, $relativePath);
             }
         }
 
-        // Zip archive will be created only after closing object
         $zip->close();
     }
 }
