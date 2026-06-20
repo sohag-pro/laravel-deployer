@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Support\Totp;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -49,18 +52,78 @@ class AuthController extends Controller
 
         $this->ensureIsNotRateLimited($request);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            RateLimiter::clear($this->throttleKey($request));
-            $request->session()->regenerate();
+        $user = User::where('email', $credentials['email'])->first();
 
-            return redirect()->intended('/');
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            RateLimiter::hit($this->throttleKey($request), self::DECAY_SECONDS);
+
+            return back()
+                ->withInput($request->only('email'))
+                ->withErrors(['email' => 'These credentials do not match our records.']);
         }
 
-        RateLimiter::hit($this->throttleKey($request), self::DECAY_SECONDS);
+        RateLimiter::clear($this->throttleKey($request));
 
-        return back()
-            ->withInput($request->only('email'))
-            ->withErrors(['email' => 'These credentials do not match our records.']);
+        // When 2FA is enabled, defer login until the code is verified.
+        if ($user->hasTwoFactorEnabled()) {
+            $request->session()->put('auth.2fa.user_id', $user->id);
+            $request->session()->put('auth.2fa.remember', $request->boolean('remember'));
+
+            return redirect()->route('two-factor.challenge');
+        }
+
+        Auth::login($user, $request->boolean('remember'));
+        $request->session()->regenerate();
+
+        return redirect()->intended('/');
+    }
+
+    /**
+     * Show the two-factor challenge after a correct password.
+     */
+    public function showChallenge(Request $request): View|RedirectResponse
+    {
+        if (! $request->session()->has('auth.2fa.user_id')) {
+            return redirect()->route('login');
+        }
+
+        return view('auth.two-factor-challenge');
+    }
+
+    /**
+     * Verify a TOTP code or recovery code and complete login.
+     */
+    public function challenge(Request $request): RedirectResponse
+    {
+        $userId = $request->session()->get('auth.2fa.user_id');
+        if (! $userId) {
+            return redirect()->route('login');
+        }
+
+        $this->ensureIsNotRateLimited($request);
+
+        $user = User::find($userId);
+        $code = trim((string) $request->input('code'));
+        $recovery = trim((string) $request->input('recovery_code'));
+
+        $passed = ($code !== '' && Totp::verify((string) $user->two_factor_secret, $code))
+            || ($recovery !== '' && $user->useRecoveryCode($recovery));
+
+        if (! $passed) {
+            RateLimiter::hit($this->throttleKey($request), self::DECAY_SECONDS);
+
+            return back()->withErrors(['code' => 'The provided two-factor code was invalid.']);
+        }
+
+        RateLimiter::clear($this->throttleKey($request));
+
+        $remember = (bool) $request->session()->pull('auth.2fa.remember', false);
+        $request->session()->forget('auth.2fa.user_id');
+
+        Auth::login($user, $remember);
+        $request->session()->regenerate();
+
+        return redirect()->intended('/');
     }
 
     /**
