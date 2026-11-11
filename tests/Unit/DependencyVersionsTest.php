@@ -3,7 +3,6 @@
 namespace Tests\Unit;
 
 use Composer\InstalledVersions;
-use Composer\Semver\VersionParser;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -29,7 +28,7 @@ class DependencyVersionsTest extends TestCase
     public function test_package_is_at_or_above_its_security_fixed_version(string $package, string $minimum): void
     {
         $this->assertTrue(
-            InstalledVersions::satisfies(new VersionParser, $package, '>='.$minimum),
+            version_compare((string) InstalledVersions::getVersion($package), $minimum, '>='),
             sprintf('%s must be installed at >= %s.', $package, $minimum)
         );
     }
