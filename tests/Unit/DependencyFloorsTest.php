@@ -34,7 +34,7 @@ class DependencyFloorsTest extends TestCase
     public static function fixedVersions(): array
     {
         return [
-            'laravel/framework' => ['laravel/framework', '13.30.0'],
+            'laravel/framework' => ['laravel/framework', '13.40.0'],
             'guzzlehttp/guzzle' => ['guzzlehttp/guzzle', '7.15.2'],
             'guzzlehttp/psr7' => ['guzzlehttp/psr7', '2.12.3'],
             'league/commonmark' => ['league/commonmark', '2.10.2'],
